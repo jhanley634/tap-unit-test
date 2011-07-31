@@ -1,2 +1,0 @@
-Based on Chris Riesbeck's original source code of 5-Oct-2010 fetched from
-http://www.cs.northwestern.edu/academics/courses/325/programs/lisp-unit.lisp
