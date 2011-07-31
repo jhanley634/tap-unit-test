@@ -1,4 +1,4 @@
-;;;-*- Mode: Lisp; Package: LISP-UNIT -*-
+;;;-*- Mode: Lisp; Package: tap-unit-test -*-
 
 #|
 Copyright (c) 2004-2005 Christopher K. Riesbeck
@@ -73,7 +73,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 How to use
 ----------
 
-1. Read the documentation in lisp-unit.html.
+1. Read the documentation in lisp-unit.html, at
+http://www.cs.northwestern.edu/academics/courses/325/readings/lisp-unit.html
 
 2. Make a file of DEFINE-TEST's. See exercise-tests.lisp for many
 examples. If you want, start your test file with (REMOVE-TESTS) to
@@ -81,7 +82,7 @@ clear any previously defined tests.
 
 2. Load this file.
 
-2. (use-package :lisp-unit)
+2. (use-package :tap-unit-test)
 
 3. Load your code file and your file of tests.
 
@@ -98,26 +99,7 @@ For more information, see lisp-unit.html.
 
 |#
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Packages
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(cl:defpackage #:lisp-unit
-  (:use #:common-lisp)
-  (:export #:define-test #:run-all-tests #:run-tests
-           #:assert-eq #:assert-eql #:assert-equal #:assert-equalp
-           #:assert-error #:assert-expands #:assert-false 
-           #:assert-equality #:assert-prints #:assert-true
-           #:fail
-           #:get-test-code #:get-tests
-           #:remove-all-tests #:remove-tests
-           #:logically-equal #:set-equal #:unordered-equal
-           #:use-debugger
-           #:with-test-listener)
-  )
-
-(in-package #:lisp-unit)
-
+(in-package :tap-unit-test)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Globals
@@ -474,4 +456,4 @@ For more information, see lisp-unit.html.
        (every #'(lambda (x1) (= (count x1 l1) (count x1 l2))) l1)))
 
 
-(provide "lisp-unit")
+(provide :tap-unit-test)
