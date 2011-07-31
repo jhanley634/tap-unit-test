@@ -2,6 +2,7 @@
 
 #|
 Copyright (c) 2004-2005 Christopher K. Riesbeck
+Copyright (c) 2011 John Hanley
 
 Permission is hereby granted, free of charge, to any person obtaining 
 a copy of this software and associated documentation files (the "Software"), 
@@ -28,6 +29,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 ;;; 
 ;;; Update history:
 ;;;
+;;; 31/07/11 report results in TAP format [JH]
 ;;; 10/05/10 added FAIL and internal changes to support it [CKR]
 ;;; 10/04/10 added UNORDERED-EQUAL [CKR]
 ;;; 04/07/06 added ~<...~> to remaining error output forms [CKR]
@@ -364,16 +366,28 @@ For more information, see lisp-unit.html.
 ;;; RUN-TESTS support
 
 (defun run-test-thunks (test-thunks)
+  "Run test-thunks and report results in TAP format."
+  ;; From http://testanything.org
+  ;; Larry Wall's Test Anything Protocol looks like:
+  ;; 1..2
+  ;; ok 1 - inint
+  ;; not ok 2 - read config
   (unless (null test-thunks)
+    (format t "~&1..~S~%" (length test-thunks))
     (let ((total-test-count 0)
           (total-pass-count 0)
-          (total-error-count 0))
+          (total-error-count 0)
+	  (i 0))
       (dolist (test-thunk test-thunks)
         (multiple-value-bind (test-count pass-count error-count)
             (run-test-thunk (car test-thunk) (cadr test-thunk))
           (incf total-test-count test-count)
           (incf total-pass-count pass-count)
-          (incf total-error-count error-count)))
+          (incf total-error-count error-count)
+	  (incf i)
+	  (format t "~&~Aok ~S - ~S~%"
+		  (if (or (> error-count 0) (/= test-count pass-count)) "not " "")
+		  i (car test-thunk))))
       (unless (null (cdr test-thunks))
         (show-summary 'total total-test-count total-pass-count total-error-count))
       (values))))
