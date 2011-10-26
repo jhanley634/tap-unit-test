@@ -210,11 +210,17 @@ For more information, see lisp-unit.html.
 
 ;;; RUN-TESTS
 
-(defmacro run-all-tests (package &rest tests)
-  `(let ((*package* (find-package ',package)))
-     (run-tests
-      ,@(mapcar #'(lambda (test) (find-symbol (symbol-name test) package))
-          tests))))
+(defmacro run-all-tests (&optional package &rest tests)
+  `(if ,package
+       (let ((*package* (find-package ',package)))
+	 (run-tests
+	  ,@(mapcar #'(lambda (test) (find-symbol (symbol-name test) package))
+		    tests)))
+     (let ((thunks))
+       (dolist (*package* (list-all-packages))
+	 (when (get-tests *package*)
+	   (setf thunks (append thunks (get-test-thunks (get-tests *package*))))))
+       (run-test-thunks thunks))))
 
 (defmacro run-tests (&rest names)
   `(run-test-thunks (get-test-thunks ,(if (null names) '(get-tests *package*) `',names))))
@@ -352,27 +358,31 @@ For more information, see lisp-unit.html.
   ;; From http://testanything.org
   ;; Larry Wall's Test Anything Protocol looks like:
   ;; 1..2
-  ;; ok 1 - inint
+  ;; ok 1 - init
   ;; not ok 2 - read config
   (unless (null test-thunks)
-    (format t "~&1..~S~%" (length test-thunks))
-    (let ((total-test-count 0)
-          (total-pass-count 0)
-          (total-error-count 0)
-	  (i 0))
-      (dolist (test-thunk test-thunks)
-        (multiple-value-bind (test-count pass-count error-count)
-            (run-test-thunk (car test-thunk) (cadr test-thunk))
-          (incf total-test-count test-count)
-          (incf total-pass-count pass-count)
-          (incf total-error-count error-count)
-	  (incf i)
-	  (format t "~&~Aok ~S - ~S~%"
-		  (if (or (> error-count 0) (/= test-count pass-count)) "not " "")
-		  i (car test-thunk))))
+    (with-open-file (out "results.tap"
+		     ;(format nil "~A_results.tap" (package-names test-thunks))
+		     :direction :output
+		     :if-exists :supersede)
+      (format out "~&TAP version 13~%1..~S~%" (length test-thunks))
+      (let ((total-test-count 0)
+	    (total-pass-count 0)
+	    (total-error-count 0)
+	    (i 0))
+	(dolist (test-thunk test-thunks)
+	  (multiple-value-bind (test-count pass-count error-count)
+	      (run-test-thunk (car test-thunk) (cadr test-thunk))
+	    (incf total-test-count test-count)
+	    (incf total-pass-count pass-count)
+	    (incf total-error-count error-count)
+	    (incf i)
+	    (format out "~&~Aok ~S - ~S~%"
+		    (if (or (> error-count 0) (/= test-count pass-count)) "not " "")
+		    i (car test-thunk))))
       (unless (null (cdr test-thunks))
         (show-summary 'total total-test-count total-pass-count total-error-count))
-      (values))))
+      (= total-test-count total-pass-count)))))
 
 (defun run-test-thunk (*test-name* thunk)
   (if (null thunk)
@@ -384,12 +394,25 @@ For more information, see lisp-unit.html.
           ((error #'(lambda (e)
                       (let ((*print-escape* nil))
                         (setq error-count 1)         
-                        (format t "~&    ~S: ~W" *test-name* e))
+                        (format t "~& ERROR    ~S: ~W" *test-name* e))
                       (if (use-debugger-p e) e (go exit)))))
         (funcall thunk)
         (show-summary *test-name* *test-count* *pass-count*))
       exit
       (return (values *test-count* *pass-count* error-count)))))
+
+(defun package-names (test-thunks)
+  "Turns union of packages that defined tests into a string like 'pkg1_pkg2'."
+  (let ((ret))
+    (dolist (thunk test-thunks)
+      (let* ((name (string-downcase (format nil "~S" (car thunk))))
+	     (pos (position #\: name))
+	     (pkg))
+	(when (and pos (> pos 0))
+	  (setf pkg (subseq name 0 pos))
+	  (when (not (member pkg ret :test #'string=))
+	    (push pkg ret)))))
+    (format nil "~{~A~^_~}" (sort ret #'string<))))
 
 (defun use-debugger-p (e)
   (and *use-debugger*
@@ -453,7 +476,8 @@ For more information, see lisp-unit.html.
   (and (listp l1)
        (listp l2)
        (= (length l1) (length l2))
-       (every #'(lambda (x1) (= (count x1 l1) (count x1 l2))) l1)))
+       (every #'(lambda (x1) (= (count x1 l1 :test test)
+                                (count x1 l2 :test test))) l1)))
 
 
 (provide :tap-unit-test)
